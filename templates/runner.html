@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Runner Info</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+      body {
+        display: flex;
+        min-height: 100vh;
+        margin: 0;
+      }
+      .sidebar {
+        width: 250px;
+        background-color: #343a40;
+        color: white;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        padding: 20px;
+        overflow-y: auto;
+      }
+      .sidebar h4 {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+      }
+      .sidebar p {
+        margin: 0;
+        font-size: 0.9rem;
+      }
+      .main-content {
+        margin-left: 250px;
+        padding: 30px;
+        flex: 1;
+        background-color: #f8f9fa;
+      }
+      .stat-card {
+        margin-top: 20px;
+        background: #495057;
+        padding: 12px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+        color: #f1f1f1;
+      }
+
+      .stat-card h5 {
+        color: white;
+      }
+      .stat-card strong {
+        display: block;
+        font-size: 1rem;
+      }
+      .chart-container {
+        position: relative;
+        max-width: 800px;
+        margin: auto;
+      }
+      .negative {
+        color: red
+      }
+      .positive {
+        color: green
+      }
+
+      h2 {
+        margin-top: 10px;
+        margin-bottom: 25px;
+        font-size: 1.8rem;
+        font-weight: bold;
+      }
+      h5 {
+        margin-bottom: 10px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #343a40;
+      }
+
+      ul {
+        margin-top: 10px;
+        margin-bottom: 25px;
+      }
+
+      table {
+        margin-top: 20px;
+        margin-bottom: 30px;
+      }
+
+      .alert {
+        margin-top: 20px;
+      }
+
+      .card h5 {
+        margin-top: 0;
+        margin-bottom: 15px;
+      }
+  </style>
+
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h4>Runner Overview</h4>
+    <div class="stat-card">
+      <strong>Total Races:</strong> {{ total_races | default('N/A') }}
+    </div>
+    <div class="stat-card">
+      <strong>Best Time:</strong> {{ best_time | default('N/A') }}
+    </div>
+    <div class="stat-card">
+      <strong>Worst Time:</strong> {{ worst_time | default('N/A') }}
+    </div>
+    <div class="stat-card">
+      <strong>Weighted Avg:</strong> {{ weighted_avg | default('N/A') }}
+    </div>
+    <hr>
+    <a href="{{ url_for('runners_table') }}" class="btn btn-light btn-sm w-100 mb-2" aria-label="Back to runners table">⬅ Back to Table</a>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm w-100" aria-label="Return to home page">🏠 Home</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <h2>{{ runner["Athlete"] }} - Details</h2>
+    <table class="table table-bordered bg-white shadow-sm">
+      <tbody>
+        {% for key, value in runner.items() %}
+          <tr>
+            <th>{{ key }}</th>
+            <td>{{ value | default('N/A') }}</td>
+          </tr>
+        {% endfor %}
+        <tr>
+          <th>~ Time in Ideal Conditions</th>
+          <td>
+            {{ ideal_time | default('N/A') }}
+            {% if difference is not none %}
+              <p style="color: green; font-size: 14px;">-{{ difference }}s</p>
+            {% endif %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h5 class="mt-3">Quick Stats</h5>
+    <ul>
+      <li>{{ normal_display | default('No data') }}</li>
+      {% if '-' in d %}
+        <li>{{ average | default('No data') }}
+            <p class="negative">{{ d | default('No data') }}</p>
+        </li>
+       {% else %}
+         <li>{{ average | default('No data') }}
+            <p class="positive">{{ d | default('No data') }}</p>
+         </li>
+       {% endif %}
+    </ul>
+
+    <h5 class="mt-3">Standard Deviation: {{ sd }} [{{ c_score }}]</h5>
+    <div class="stat-card">
+        <h5>Based on the correlation analysis, the variable most strongly associated with their race</h5>
+        <h5>time is the {{ highest_feature }}, with a correlation strength of {{ percentage_strength }}%</h5>
+        <h5>across all of their races</h5>
+        <br>
+        <br>
+        <h5>VO₂ max is a measure of aerobic fitness, showing how much oxygen the body can use at maximum effort.</h5>
+        <h5>Athlete's VO₂ max: {{ vo2max }}</h5>
+
+    </div>
+
+    <h5 class="mt-4">Based off their races...</h5>
+    <form method="POST">
+      <div class="input-group mb-3" style="max-width: 300px;">
+        <input type="number" class="form-control" name="target_distance" placeholder="Enter distance (m)" min="1" required aria-label="Target distance in meters">
+        <button class="btn btn-primary" type="submit" aria-label="Predict race time">Predict</button>
+      </div>
+    </form>
+
+    {% if prediction %}
+      <div class="alert alert-info mt-2">
+        Based on their races, a <strong>{{ target_distance }}m</strong> race would take ~ <strong>{{ prediction }}</strong>
+      </div>
+    {% endif %}
+
+    <div class="card mt-4 p-3 shadow-sm">
+    <h5>Performance Graph</h5>
+    <div class="chart-container" style="height:400px;">
+      {% if events %}
+        <canvas id="averagesChart" aria-label="Performance graph showing raw, ideal, and weighted average times"></canvas>
+      {% else %}
+        <p class="text-muted">No performance data available for this distance.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if events %}
+  <script>
+    const ctx = document.getElementById("averagesChart").getContext("2d");
+
+    // Create gradient fills
+    const gradientRaw = ctx.createLinearGradient(0, 0, 0, 400);
+    gradientRaw.addColorStop(0, 'rgba(75, 192, 192, 0.3)');
+    gradientRaw.addColorStop(1, 'rgba(75, 192, 192, 0)');
+
+    const gradientIdeal = ctx.createLinearGradient(0, 0, 0, 400);
+    gradientIdeal.addColorStop(0, 'rgba(255, 99, 132, 0.3)');
+    gradientIdeal.addColorStop(1, 'rgba(255, 99, 132, 0)');
+
+    const gradientWeighted = ctx.createLinearGradient(0, 0, 0, 400);
+    gradientWeighted.addColorStop(0, 'rgba(255, 206, 86, 0.3)');
+    gradientWeighted.addColorStop(1, 'rgba(255, 206, 86, 0)');
+
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: {{ events | tojson }},
+        datasets: [
+          {
+            label: "Raw Average",
+            data: {{ raw_avg | tojson }},
+            borderColor: "#4BC0C0",
+            backgroundColor: gradientRaw,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 2
+          },
+          {
+            label: "Ideal Average",
+            data: {{ ideal_avg | tojson }},
+            borderColor: "#FF6384",
+            backgroundColor: gradientIdeal,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 2
+          },
+          {
+            label: "Weighted Average",
+            data: {{ all_weights | tojson }},
+            borderColor: "#FFCE56",
+            backgroundColor: gradientWeighted,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "top", labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' } },
+          tooltip: { mode: 'index', intersect: false }
+        },
+        interaction: {
+          mode: 'nearest',
+          axis: 'x',
+          intersect: false
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            title: { display: true, text: "Time (seconds)" },
+            grid: { color: "#dee2e6" }
+          },
+          x: {
+            title: { display: true, text: "Event" },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  </script>
+
+  {% endif %}
+  </div>
+</body>
+</html>
