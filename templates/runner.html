@@ -11,6 +11,9 @@
         min-height: 100vh;
         margin: 0;
       }
+      nav {
+        background-color: red;
+      }
       .sidebar {
         width: 250px;
         background-color: #343a40;
@@ -76,10 +79,6 @@
         color: #343a40;
       }
 
-      ul {
-        margin-top: 10px;
-        margin-bottom: 25px;
-      }
 
       table {
         margin-top: 20px;
@@ -94,6 +93,66 @@
         margin-top: 0;
         margin-bottom: 15px;
       }
+      .field {
+        display: inline-block;
+      }
+      #selectEvent {
+        height: 5vh;
+        border-radius: 24px;
+        text-align: center;
+      }
+      .race-submit-btn {
+      background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+      color: white;
+      border: 2px solid #6c757d;
+      border-radius: 24px;
+      padding: 8px 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-left: 10px;
+      height: 5vh;
+      min-width: 80px;
+    }
+
+    .race-submit-btn:hover {
+      background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+      border-color: #adb5bd;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      color: #f8f9fa;
+    }
+
+    .race-submit-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .race-submit-btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(108, 117, 125, 0.3);
+    }
+
+    /* Optional: Style the form container to better align elements */
+    .race-selector-form {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+      nav {
+  width: 100%;
+  background-color: #333;
+  position: fixed; /* makes it stick to the top */
+  top: 0;
+  left: 0;
+  z-index: 1000; /* so it stays above sidebar */
+}
+
   </style>
 
 </head>
@@ -113,14 +172,37 @@
     <div class="stat-card">
       <strong>Weighted Avg:</strong> {{ weighted_avg | default('N/A') }}
     </div>
+
     <hr>
-    <a href="{{ url_for('runners_table') }}" class="btn btn-light btn-sm w-100 mb-2" aria-label="Back to runners table">⬅ Back to Table</a>
-    <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm w-100" aria-label="Return to home page">🏠 Home</a>
+    <a href="{{ url_for('db_table') }}" class="btn btn-light btn-sm w-100 mb-2" aria-label="Back to runners table">View entire database</a>
   </div>
 
   <!-- Main Content -->
   <div class="main-content">
+    <ul class="nav nav-underline">
+  {% for r in unique_names %}
+  <li class="nav-item">
+      {% if r['Athlete'] == runner["Athlete"]%}
+        <a class="nav-link active" aria-current="page" href="#"><h1>{{ r['Athlete'] }}</h1></a>
+      {% else %}
+        <a class="nav-link" href="{{ url_for('runner', idx=runneridx[loop.index0]) }}"><h1>{{ r['Athlete'] }}</h1></a>
+      {% endif %}
+  </li>
+  {% endfor %}
+</ul>
     <h2>{{ runner["Athlete"] }} - Details</h2>
+
+    <div class="field">
+        <form method="POST">
+           <select name="selectEvent" id="selectEvent">
+                <option> ----- </option>
+           {% for n in race_names %}
+                <option value="{{ n }}">{{ n }}</option>
+           {% endfor %}
+           </select>
+           <button type="submit" class="race-submit-btn">Sumbit</button>
+        </form>
+    </div>
     <table class="table table-bordered bg-white shadow-sm">
       <tbody>
         {% for key, value in runner.items() %}
