@@ -76,7 +76,7 @@ def seconds_to_time(seconds):
     """
     Converts seconds (float) to 'M:SS.ss' format.
     """
-    if seconds is None or np.isnan(seconds):
+    if seconds is None:
         return None
     seconds = float(seconds)
     minutes = int(seconds // 60)
