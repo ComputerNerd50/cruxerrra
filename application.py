@@ -43,6 +43,7 @@ def upload():
     try:
         all_races = []  # collect all races across all files
         runners_data = []  # collect all rows across all files
+        runneridx = []
         for f in files:
             # Read CSV
             stream = io.StringIO(f.stream.read().decode("utf-8"))
@@ -74,12 +75,18 @@ def upload():
                     print(f"Skipping row due to error: {e}")
                     continue
 
+        unique_names = []
+        for i in range(len(runners_data)):
+            if runners_data[i]['Athlete'] not in [u['Athlete'] for u in unique_names]:
+                unique_names.append(runners_data[i])
+                runneridx.append(i)
+
         # Save all races after processing all files
         if all_races:
             db.session.add_all(all_races)
             db.session.commit()
         flash(f"Successfully uploaded {len(runners_data)} records from {len(files)} file(s)!")
-        return redirect(url_for('runners_table'))
+        return redirect(url_for('runner', idx=0))
     except Exception as e:
         print(f"Error processing file: {e}")
         flash(f"Error processing file: {e}")
@@ -123,7 +130,8 @@ def runners_table():
         runners=paginated_runners,
         names=names,
         page=page,
-        total_pages=total_pages
+        total_pages=total_pages,
+
     )
 
 @app.route('/db_table')
@@ -165,24 +173,38 @@ def db_table():
         page=page,
         total_pages=total_pages,
         has_prev=has_prev,
-        has_next=has_next
+        has_next=has_next,
+
     )
+
 
 @app.route('/runner/<int:idx>', methods=["GET", "POST"])
 def runner(idx: int):
     global runners_data
     global correlations_data
-    if not runners_data or idx < 0 or idx >= len(runners_data):
-        flash("Runner not found.")
-        return redirect(url_for('runners_table'))
 
+    # Get the current runner's data first
     runner_row = runners_data[idx]
+    current_athlete = runner_row.get("Athlete", "").strip()
+
+    if request.method == "POST":
+        event_name = request.form['selectEvent'].strip()
+        # Filter by BOTH event name AND current athlete
+        for j, race in enumerate(runners_data):
+            if (race.get("Event", "").strip() == event_name and
+                    race.get("Athlete", "").strip() == current_athlete):
+                idx = j
+                break
+        # Update runner_row after potentially changing idx
+        runner_row = runners_data[idx]
+
     athlete_name = runner_row.get("Athlete", "").strip()
     distance_m = to_int_safe(runner_row.get("Distance (m)"))
     if not athlete_name or distance_m is None:
         flash("Invalid runner data.")
         return redirect(url_for('runners_table'))
 
+    # Rest of your code remains the same...
     raw_avg, ideal_avg, events = cumulative_averages(runners_data, athlete_name, distance_m)
     athlete_races = [r for r in runners_data if r.get("Athlete", "").strip() == athlete_name]
     df = pd.DataFrame(athlete_races)
@@ -213,19 +235,29 @@ def runner(idx: int):
 
     # Gather past races for the athlete across all distances (for model)
     distances_m, times_sec = [], []
+    runneridx = []
+    race_names = []
+    unique_names = []
+    for i in range(len(runners_data)):
+        if runners_data[i]['Athlete'] not in [u['Athlete'] for u in unique_names]:
+            unique_names.append(runners_data[i])
+            runneridx.append(i)
 
+    # Filter race_names to only include races from the current athlete
     for race in runners_data:
         try:
             if race.get("Athlete", "").strip() != athlete_name:
                 continue
 
             d = to_int_safe(race.get("Distance (m)"))
+            name = race.get("Event", "").strip()
             if d is None or d <= 0:
                 continue
 
             t = parse_time_to_seconds(race.get("Time", ""))
             distances_m.append(d)
             times_sec.append(t)
+            race_names.append(name)
         except Exception:
             continue
 
@@ -273,7 +305,6 @@ def runner(idx: int):
     except Exception:
         ideal_time = None
         difference = None
-
     # Calculate statistics for sidebar
     athlete_races = [r for r in runners_data if r.get("Athlete", "").strip() == athlete_name]
     total_races = len(athlete_races)
@@ -318,11 +349,14 @@ def runner(idx: int):
         best_time=best_time,
         worst_time=worst_time,
         d=d,
-        sd = sd,
+        sd=sd,
         c_score=c_score,
         percentage_strength=percentage_strength,
         highest_feature=highest_feature,
         vo2max=vo2max,
+        unique_names=unique_names,
+        race_names=race_names,
+        runneridx=runneridx
     )
 
 
