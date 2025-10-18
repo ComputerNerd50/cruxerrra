@@ -60,26 +60,28 @@
 </head>
 <body>
   <div class="sidebar">
-    <h2 class="px-3">All Runners</h2>
-    <div class="px-3 py-2">
-        <!-- Filtration System -->
-        <form method="POST" action="{{ url_for('runners_table') }}" >
-          <select class="form-select" name="filter">
-              <option>
-                    All Athletes
-              </option>
-              {% for r in unique_names %}
-                <option value="{{ r['Athlete'] }}">
-                    {{ r['Athlete'] }}
-                </option>
-              {% endfor %}
-          </select>
-          <input type="number" name="distance" placeholder="Distance"/>
-          <input name="surface" placeholder="Surface"/>
-          <input type="submit"/>
-        </form>
-      <a href="{{ url_for('db_table') }}" class="btn btn-primary w-100 mb-2">View All Races in Database</a>
-      <a href="{{ url_for('index') }}" class="btn btn-secondary w-100">🏠 Home</a>
+        <h2>{{ runner["Athlete"] }} - Details</h2>
+        <table class="table table-bordered bg-white shadow-sm">
+          <tbody>
+            {% for key, value in runner.items() %}
+              <tr>
+                <th>{{ key }}</th>
+                <td>{{ value | default('N/A') }}</td>
+              </tr>
+            {% endfor %}
+            <tr>
+              <th>~ Time in Ideal Conditions</th>
+              <td>
+                {{ ideal_time | default('N/A') }}
+                {% if difference is not none %}
+                  <p style="color: green; font-size: 14px;">-{{ difference }}s</p>
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <a href="{{ url_for('db_table') }}" class="btn btn-primary w-100 mb-2">View All Races in Database</a>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary w-100">🏠 Home</a>
     </div>
   </div>
 
